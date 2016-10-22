@@ -45,6 +45,12 @@ app.post("/webhook", function (req, res) {
         });
     }
 
+    else if (type === "client.slashCommand"){
+        if(req.body.text === "p p"){
+            var response = {content: {type: "url-unfurl", source: "https://www.youtube.com"}, text: "vsdiuhfs"};
+            res.json(JSON.stringify(response));
+        }
+    }
 });
 
 mongo.connect(settings.mongoUrl, function (mongoConnectErr, connectedDb) {
