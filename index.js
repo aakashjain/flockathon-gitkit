@@ -16,9 +16,35 @@ app.get("/", function (req, res) {
 app.post("/webhook", function (req, res) {
     console.log(req.body);
     var type = req.body.name;
+
     if (type === "app.install") {
-        res.sendStatus(200);
+        var newUser = {
+            _id: req.body.userId,
+            userToken: req.body.userToken,
+            token: req.body.token,
+            installed: true
+        };
+        db.collection("users").update({_id: newUser._id}, newUser, {upsert: true}, function (newUserErr) {
+            if (newUserErr) {
+                console.error("Error creating new user install", newUser._id);
+                res.sendStatus(500);
+            } else {
+                console.log("Created new user", newUser._id);
+                res.sendStatus(200);
+            }
+        });
+    } else if (type === "app.uninstall") {
+        db.collection("users").update({_id: req.body.userId}, {$set: {installed: false}}, function (uninstallErr) {
+            if (uninstallErr) {
+                console.error("Error setting user uninstalled", req.body.userId);
+                res.sendStatus(500);
+            } else {
+                console.log("Uninstalled user", req.body.userId);
+                res.sendStatus(200);
+            }
+        });
     }
+
 });
 
 mongo.connect(settings.mongoUrl, function (mongoConnectErr, connectedDb) {
