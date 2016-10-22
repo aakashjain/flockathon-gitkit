@@ -47,8 +47,8 @@ app.post("/webhook", function (req, res) {
 
     else if (type === "client.slashCommand"){
         if(req.body.text === "p p"){
-            var response = {content: {type: "url-unfurl", source: "https://www.youtube.com"}, text: "vsdiuhfs"};
-            res.json(JSON.stringify(response));
+            var response = {text: "Processing..."};
+            res.status(200).json(response);
         }
     }
 });
