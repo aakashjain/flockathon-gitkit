@@ -16,9 +16,11 @@ var db = null;
 app.use(bodyParser.json());
 app.use(cors());
 
+
 app.get("/", function (req, res) {
     res.send("Sup lol!");
 });
+
 
 app.post("/webhook", function (req, res) {
     console.log(req.body);
@@ -104,6 +106,7 @@ app.post("/webhook", function (req, res) {
     }
 });
 
+
 app.get('/github-auth/:userid', function (req, res) {
     request(gitTokenPost(req.query.code), function (error, response, body) {
         if (error) {
@@ -140,23 +143,6 @@ app.get('/github-auth/:userid', function (req, res) {
     });
 });
 
-mongo.connect(settings.mongoUrl, function (mongoConnectErr, connectedDb) {
-    if (mongoConnectErr) {
-        console.error("Error connecting to MongoDB instance", mongoConnectErr);
-        process.exit(-1);
-    }
-
-    db = connectedDb;
-
-    app.listen(3001, function (serverStartErr) {
-        if (serverStartErr) {
-            console.error("Error starting server", serverStartErr);
-            process.exit(-1);
-        }
-
-        console.log("Started server");
-    });
-});
 
 var flockPost = function (body) {
     return {
@@ -166,11 +152,13 @@ var flockPost = function (body) {
     };
 };
 
+
 var gitOAuth = function (userid) {
     return "https://github.com/login/oauth/authorize?client_id=" + settings.githubClientId
             + "&redirect_uri=" + settings.ngrokUrl + "/github-auth/" + userid + "&scope=repo:status"
             + "&state=d5e497f8-54ff-5924-843d-dfcb52da9f7a&allow_signup=true";
 };
+
 
 var gitTokenPost = function (code) {
     return {
@@ -185,6 +173,7 @@ var gitTokenPost = function (code) {
         }
     };
 };
+
 
 var fetchUserCommitsOnRepos = function (user, chatId) {
     var githubUser = user.githubUser;
@@ -236,6 +225,12 @@ var fetchUserCommitsOnRepos = function (user, chatId) {
     });
 };
 
+
+var fetchAllCommitsOnRepo = function (user, chatId) {
+    
+}
+
+
 var createAndSendChart = function (data, script, chatId) {
     var chart = {
         _id: chance.guid(),
@@ -255,15 +250,23 @@ var createAndSendChart = function (data, script, chatId) {
             text: "Here's the chart!",
             attachments: [{
                 buttons: [{
-                    "name": "View chart",
+                    "name": "Open preview",
                     "action": {
                         "type": "openWidget",
                         "url": settings.ngrokUrl + "/charts/" + chart._id,
                         "desktopType": "modal",
                         "mobileType": "modal"
                     },
+                    "id": "chart_widget_button"
+                }, {
+                    "name": "Open in browser",
+                    "action": {
+                        "type": "openBrowser",
+                        "url": settings.ngrokUrl + "/charts/" + chart._id
+                    },
                     "id": "chart_button"
-                }]
+                }
+                ]
             }]
         }), function (err, response, body) {
             if (err) {
@@ -272,6 +275,7 @@ var createAndSendChart = function (data, script, chatId) {
         });
     });
 };
+
 
 app.get("/charts/:chartId", function (req, res) {
     db.collection("charts").findOne({_id: req.params.chartId}, function (err, doc) {
@@ -286,11 +290,30 @@ app.get("/charts/:chartId", function (req, res) {
 
         var html = fs.readFileSync("charts/chart.html", {encoding: "utf8"});
         var js = fs.readFileSync("charts/" + doc.script, {encoding: "utf8"});
-        js = "var rawDataString = " + doc.data + ";" + js;
+        js = "var rawData = " + doc.data + ";" + js;
         html =  html.replace("$$SCRIPT$$", js);
 
         res.writeHead(200, {'Content-Type': 'text/html'});
         res.write(html);
         res.end();
+    });
+});
+
+
+mongo.connect(settings.mongoUrl, function (mongoConnectErr, connectedDb) {
+    if (mongoConnectErr) {
+        console.error("Error connecting to MongoDB instance", mongoConnectErr);
+        process.exit(-1);
+    }
+
+    db = connectedDb;
+
+    app.listen(3001, function (serverStartErr) {
+        if (serverStartErr) {
+            console.error("Error starting server", serverStartErr);
+            process.exit(-1);
+        }
+
+        console.log("Started server");
     });
 });
