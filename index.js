@@ -529,7 +529,8 @@ var sendHelp = function (chatId) {
     +"<em>/gitkit popular content for :owner:/:repo:</em> - distribution of the most frequently accessed files in a repository<br/>"
     +"<strong>Note:</strong><br/>"
     +"<em>:owner:/:repo:</em> refers to the full name of a repository (Eg: aakashjain/flockathon-gitkit)."
-    +" It must be either a public repository or a repository that you have write access to. For traffic stats on a repository, you must have admin access."
+    +" It must be either a public repository or a repository that you have write access to. For traffic stats on a repository, you must have admin access.<br/>"
+    +"You can specify the <em>public</em> keyword to post results in the current chat. Otherwise GitKit bot will send it to you privately."
     +"</flockml>";
     request(flockPost({
         to: chatId,
