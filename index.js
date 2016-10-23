@@ -97,6 +97,9 @@ app.post("/webhook", function (req, res) {
 
             var chatId = req.body.userId;
             var command = req.body.text;
+            if (command == null) {
+                command = "";
+            }
             if (command.includes("public")) {
                 chatId = req.body.chat;
                 command = command.replace("public", "");
@@ -124,6 +127,8 @@ app.post("/webhook", function (req, res) {
                 fetchCommitActivityForRepo(doc, chatId, command.replace("commit activity for ", "").replace(" ",""))
             } else if (command.match("punch card for .+/.+$") !== null) {
                 fetchPunchCardForRepo(doc, chatId, command.replace("punch card for ", "").replace(" ",""))
+            } else if (command === "" || command.includes("help")) {
+                sendHelp(req.body.userId);
             }
         });
 
@@ -506,6 +511,41 @@ app.get("/charts/:chartId", function (req, res) {
         res.end();
     });
 });
+
+
+var sendHelp = function (chatId) {
+    var helpString = "<flockml>"
+    +"<strong>Activity:</strong><br/>"
+    +"<em>/gitkit my commits</em> - a distribution of your commits over all repos you have contributed to"
+    +"<em>/gitkit commit activity for :owner:/:repo:</em> - a distribution of commits on a repo<br/>"
+    +"<em>/gitkit contributors on :owner:/:repo:</em> - ratios of top contributors on a repo<br/>"
+    +"<em>/gitkit code frequency for :owner:/:repo:</em> - number of code additions and subtractions in a repo<br/>"
+    +"<em>/gitkit punch card for :owner:/:repo:</em> - a distribution of a repo's commit trends over the week<br/>"
+    +"<em>/gitkit languages in :owner:/:repo:</em> - ratio of languages used in a repo<br/>"
+    +"<strong>Traffic:</strong><br/>"
+    +"<em>/gitkit views for :owner:/:repo:</em> - graph of viewers and views for a repository's github page<br/>"
+    +"<em>/gitkit clones for :owner:/:repo:</em> - graph of number of clones created of a repository<br/>"
+    +"<em>/gitkit referrers for :owner:/:repo:</em> - graph of number of referrals for a repository's github page<br/>"
+    +"<em>/gitkit popular content for :owner:/:repo:</em> - distribution of the most frequently accessed files in a repository<br/>"
+    +"<strong>Note:</strong><br/>"
+    +"<em>:owner:/:repo:</em> refers to the full name of a repository (Eg: aakashjain/flockathon-gitkit)."
+    +" It must be either a public repository or a repository that you have write access to. For traffic stats on a repository, you must have admin access."
+    +"</flockml>";
+    request(flockPost({
+        to: chatId,
+        token: settings.flockBotToken,        
+        text: "GitKit instructions",
+        attachments: [{
+            views: {
+                flockml: helpString
+            }
+        }]
+    }), function (err, response, body) {
+        if (err) {
+            console.error("Error posting chart url", err);
+        }
+    });
+};
 
 
 mongo.connect(settings.mongoUrl, function (mongoConnectErr, connectedDb) {
