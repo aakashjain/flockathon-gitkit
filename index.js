@@ -95,12 +95,36 @@ app.post("/webhook", function (req, res) {
                 return;
             }
 
-            if (req.body.text === "commit map") {
-
-            } else if (req.body.text === "commit repos") {
-                fetchUserCommitsOnRepos(doc, req.body.chat);
+            var chatId = req.body.userId;
+            var command = req.body.text;
+            if (command.includes("public")) {
+                chatId = req.body.chat;
+                command = command.replace("public", "");
             }
 
+            if (command.match("commit map") !== null) {
+
+            } else if (command.match("my commits") !== null) {
+                fetchUserCommitsOnRepos(doc, chatId);
+            } else if (command.match("^contributions on .+/.+$") !== null) {
+                fetchContributorRatioOnRepo(doc, chatId, command.replace("contributions on ", "").replace(" ",""));
+            } else if (command.match("^languages in .+/.+$") !== null) {
+                fetchLanguageRationOnRepo(doc, chatId, command.replace("languages in ", "").replace(" ",""));
+            } else if (command.match("referrers for .+/.+$") !== null) {
+                fetchReferrersForRepo(doc, chatId, command.replace("referrers for ", "").replace(" ",""));
+            } else if (command.match("popular content for .+/.+$") !== null) {
+                fetchPopularContentForRepo(doc, chatId, command.replace("popular content for ", "").replace(" ",""));
+            } else if (command.match("views for .+/.+$") !== null) {
+                fetchViewsForRepo(doc, chatId, command.replace("views for ", "").replace(" ",""));
+            } else if (command.match("clones for .+/.+$") !== null) {
+                fetchClonesForRepo(doc, chatId, command.replace("clones for ", "").replace(" ",""));
+            } else if (command.match("code frequency for .+/.+$") !== null) {
+                fetchCodeFrequencyForRepo(doc, chatId, command.replace("code frequency for ", "").replace(" ",""));
+            } else if (command.match("commit activity for .+/.+$") !== null) {
+                fetchCommitActivityForRepo(doc, chatId, command.replace("commit activity for ", "").replace(" ",""))
+            } else if (command.match("punch card for .+/.+$") !== null) {
+                fetchPunchCardForRepo(doc, chatId, command.replace("punch card for ", "").replace(" ",""))
+            }
         });
 
     }
@@ -155,7 +179,7 @@ var flockPost = function (body) {
 
 var gitOAuth = function (userid) {
     return "https://github.com/login/oauth/authorize?client_id=" + settings.githubClientId
-            + "&redirect_uri=" + settings.ngrokUrl + "/github-auth/" + userid + "&scope=repo:status"
+            + "&redirect_uri=" + settings.ngrokUrl + "/github-auth/" + userid + "&scope=repo%20read:org"
             + "&state=d5e497f8-54ff-5924-843d-dfcb52da9f7a&allow_signup=true";
 };
 
@@ -181,7 +205,7 @@ var fetchUserCommitsOnRepos = function (user, chatId) {
     var commits = [];
     request({
         method: "GET",
-        uri: "https://api.github.com/users/" + githubUser+ "/repos",
+        uri: "https://api.github.com/user/repos",
         headers: {
             authorization: "token " + githubToken,
             "User-Agent": "Chrome/51.0.2704.103"
@@ -226,10 +250,194 @@ var fetchUserCommitsOnRepos = function (user, chatId) {
 };
 
 
-var fetchAllCommitsOnRepo = function (user, chatId) {
-    
+var fetchContributorRatioOnRepo = function (user, chatId, repo) {
+    var contributors = [];
+    var githubToken = user.githubToken;
+    request({
+        method: "GET",
+        uri: "https://api.github.com/repos/" + repo + "/contributors",
+        qs: { anon: false },
+        headers: {
+            authorization: "token " + githubToken,
+            "User-Agent": "Chrome/51.0.2704.103"
+        }
+    }, function (err, response, body) {
+        if (err) {
+            console.error(err);
+            return;
+        }
+        body = JSON.parse(body);
+        body.forEach(function (contrib) {
+            contributors.push({
+                user: contrib.login,
+                commits: contrib.contributions
+            });
+        });
+        createAndSendChart(contributors, "repoContributorRatio.js", chatId);
+    });
+};
+
+
+var fetchLanguageRationOnRepo = function (user, chatId, repo) {
+    var languages = [];
+    request({
+        method: "GET",
+        uri: "https://api.github.com/repos/" + repo + "/languages",
+        headers: {
+            authorization: "token " + user.githubToken,
+            "User-Agent": "Chrome/51.0.2704.103"
+        }
+    }, function (err, response, body) {
+        if (err) {
+            console.error(err);
+            return;
+        }
+        body = JSON.parse(body);
+        Object.keys(body).forEach(function (language) {
+            languages.push({
+                language: language,
+                bytes: body[language]
+            });
+        });
+        createAndSendChart(languages, "repoLanguageRatio.js", chatId);
+    });
 }
 
+
+var fetchReferrersForRepo = function (user, chatId, repo) {
+    request({
+        method: "GET",
+        uri: "https://api.github.com/repos/" + repo + "/traffic/popular/referrers",
+        headers: {
+            authorization: "token " + user.githubToken,
+            "User-Agent": "Chrome/51.0.2704.103",
+            accept: "application/vnd.github.spiderman-preview"
+        }
+    }, function (err, response, body) {
+        if (err) {
+            console.error(err);
+            return;
+        }
+        body = JSON.parse(body);
+        createAndSendChart(body, "repoReferrers.js", chatId);
+    });
+};
+
+var fetchPopularContentForRepo = function (user, chatId, repo) {
+    request({
+        method: "GET",
+        uri: "https://api.github.com/repos/" + repo + "/traffic/popular/paths",
+        headers: {
+            authorization: "token " + user.githubToken,
+            "User-Agent": "Chrome/51.0.2704.103",
+            accept: "application/vnd.github.spiderman-preview"
+        }
+    }, function (err, response, body) {
+        if (err) {
+            console.error(err);
+            return;
+        }
+        body = JSON.parse(body);
+        createAndSendChart(body, "repoPopularContent.js", chatId);
+    });
+};
+
+var fetchViewsForRepo = function (user, chatId, repo) {
+    request({
+        method: "GET",
+        uri: "https://api.github.com/repos/" + repo + "/traffic/views",
+        headers: {
+            authorization: "token " + user.githubToken,
+            "User-Agent": "Chrome/51.0.2704.103",
+            accept: "application/vnd.github.spiderman-preview"
+        }
+    }, function (err, response, body) {
+        if (err) {
+            console.error(err);
+            return;
+        }
+        console.log(body);
+        body = JSON.parse(body);
+        createAndSendChart(body.views, "repoViews.js", chatId);
+    });
+};
+
+var fetchClonesForRepo = function (user, chatId, repo) {
+    request({
+        method: "GET",
+        uri: "https://api.github.com/repos/" + repo + "/traffic/clones",
+        headers: {
+            authorization: "token " + user.githubToken,
+            "User-Agent": "Chrome/51.0.2704.103",
+            accept: "application/vnd.github.spiderman-preview"
+        }
+    }, function (err, response, body) {
+        if (err) {
+            console.error(err);
+            return;
+        }
+        body = JSON.parse(body);
+        createAndSendChart(body.clones, "repoClones.js", chatId);
+    });
+};
+
+var fetchCodeFrequencyForRepo = function (user, chatId, repo) {
+    request({
+        method: "GET",
+        uri: "https://api.github.com/repos/" + repo + "/stats/code_frequency",
+        headers: {
+            authorization: "token " + user.githubToken,
+            "User-Agent": "Chrome/51.0.2704.103"
+        }
+    }, function (err, response, body) {
+        if (err) {
+            console.error(err);
+            return;
+        }
+        console.log(body);
+        body = JSON.parse(body);
+        createAndSendChart(body, "repoCodeFrequency.js", chatId);
+    });
+};
+
+var fetchCommitActivityForRepo = function (user, chatId, repo) {
+    request({
+        method: "GET",
+        uri: "https://api.github.com/repos/" + repo + "/stats/commit_activity",
+        headers: {
+            authorization: "token " + user.githubToken,
+            "User-Agent": "Chrome/51.0.2704.103"
+        }
+    }, function (err, response, body) {
+        if (err) {
+            console.error(err);
+            return;
+        }
+        console.log(body);
+        body = JSON.parse(body);
+        createAndSendChart(body, "repoCommitActivity.js", chatId);
+    });
+};
+
+var fetchPunchCardForRepo = function (user, chatId, repo) {
+    console.log(repo);
+    request({
+        method: "GET",
+        uri: "https://api.github.com/repos/" + repo + "/stats/punch_card",
+        headers: {
+            authorization: "token " + user.githubToken,
+            "User-Agent": "Chrome/51.0.2704.103"
+        }
+    }, function (err, response, body) {
+        if (err) {
+            console.error(err);
+            return;
+        }
+        console.log(body);
+        body = JSON.parse(body);
+        createAndSendChart(body, "repoPunchCard.js", chatId);
+    });
+};
 
 var createAndSendChart = function (data, script, chatId) {
     var chart = {

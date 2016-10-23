@@ -72,8 +72,7 @@ finalData.forEach(function(dataobj){
   ultraFinalData.push(newval);
 });
 
-console.log(finalData);
-console.log(ultraFinalData);
+// console.log(ultraFinalData);
 
   var chart;
   nv.addGraph(function() {
