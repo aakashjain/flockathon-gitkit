@@ -67,7 +67,7 @@ app.post("/webhook", function (req, res) {
             if (doc.githubToken == undefined) {
                 request(flockPost({
                     "text": "Authorize GitKit to access your Github account: ",
-                    "to": req.body.chat,
+                    "to": req.body.userId,
                     "token": settings.flockBotToken,
                     "attachments": [{
                         // "views": {
